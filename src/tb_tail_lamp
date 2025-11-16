@@ -1,0 +1,106 @@
+`timescale 1ns/1ps
+
+module tb_tail_lamp;
+
+    // DUT Inputs
+    reg LEFT;
+    reg RIGHT;
+    reg EMERGENCY;
+    reg CLK;
+    reg RST;
+
+    // DUT Output
+    wire [5:0] led;
+
+    // Instantiate DUT
+    tail_lamp dut (
+        .LEFT(LEFT),
+        .RIGHT(RIGHT),
+        .EMERGENCY(EMERGENCY),
+        .CLK(CLK),
+        .RST(RST),
+        .led(led)
+    );
+
+    // Fast simulation clock (100 MHz → toggle every 5 ns)
+    initial begin
+        CLK = 0;
+        forever #5 CLK = ~CLK;
+    end
+
+    // -----------------------------
+    // TASKS FOR CLEAN TESTING
+    // -----------------------------
+
+    task reset_dut;
+    begin
+        RST = 1;
+        LEFT = 0;
+        RIGHT = 0;
+        EMERGENCY = 0;
+        #100;
+        RST = 0;
+        #50;
+    end
+    endtask
+
+    task test_left;
+    begin
+        $display("===== TESTING LEFT INDICATOR =====");
+        LEFT = 1;
+        repeat(10) @(posedge CLK);
+        LEFT = 0;
+        #200;
+    end
+    endtask
+
+    task test_right;
+    begin
+        $display("===== TESTING RIGHT INDICATOR =====");
+        RIGHT = 1;
+        repeat(10) @(posedge CLK);
+        RIGHT = 0;
+        #200;
+    end
+    endtask
+
+    task test_emergency;
+    begin
+        $display("===== TESTING EMERGENCY MODE =====");
+        EMERGENCY = 1;
+        repeat(20) @(posedge CLK);
+        EMERGENCY = 0;
+        #200;
+    end
+    endtask
+
+    // -----------------------------
+    //   MAIN SIMULATION SEQUENCE
+    // -----------------------------
+    initial begin
+        $display("\n========== TAIL LAMP FSM SIMULATION ==========\n");
+
+        reset_dut();
+
+        // LEFT turn signal
+        test_left();
+
+        // RIGHT turn signal
+        test_right();
+
+        // EMERGENCY / HAZARD mode
+        test_emergency();
+
+        $display("\n========== SIMULATION COMPLETE ==========");
+        $stop;
+    end
+
+    // -----------------------------
+    // MONITOR OUTPUT
+    // -----------------------------
+    initial begin
+        $monitor("Time=%0t | LEFT=%b RIGHT=%b EMER=%b | LED=%b",
+                 $time, LEFT, RIGHT, EMERGENCY, led);
+    end
+
+endmodule
